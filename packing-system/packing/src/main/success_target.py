@@ -1,18 +1,17 @@
 """Selectable packing target used by algorithms and final reporting."""
 
 from dataclasses import dataclass
+import math
 from typing import Dict, Mapping, Optional
 
 from src.utils.case_group import normalize_case_group
-
-
-_FILL_RATE_STEPS = (0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90)
 
 
 @dataclass(frozen=True)
 class SuccessTarget:
     mode: str = "index"
     threshold: float = 192.0
+    loading_mode: str = "maximize"
 
     @classmethod
     def from_mapping(cls, value: Optional[Mapping]) -> "SuccessTarget":
@@ -20,19 +19,23 @@ class SuccessTarget:
         mode = str(raw.get("mode") or "index").strip().lower()
         threshold = float(raw.get("threshold", 192.0 if mode == "index" else 0.85))
         if mode == "index":
-            if threshold <= 0:
+            if not math.isfinite(threshold) or threshold <= 0:
                 raise ValueError("指数目标必须大于 0")
             return cls(mode=mode, threshold=threshold)
         if mode == "fill_rate":
-            if not any(abs(threshold - step) <= 1e-9 for step in _FILL_RATE_STEPS):
-                raise ValueError(
-                    "装载率目标只允许 60%、65%、70%、75%、80%、85%、90%"
-                )
-            return cls(mode=mode, threshold=threshold)
+            if not math.isfinite(threshold) or not 0 < threshold <= 1:
+                raise ValueError("装载率目标必须大于 0 且不超过 100%")
+            loading_mode = str(raw.get("loading_mode") or "maximize").strip().lower()
+            if loading_mode not in {"maximize", "stop_at_target"}:
+                raise ValueError(f"未知装盘方式：{loading_mode}")
+            return cls(mode=mode, threshold=threshold, loading_mode=loading_mode)
         raise ValueError(f"未知成功目标模式：{mode}")
 
     def to_dict(self) -> Dict[str, float | str]:
-        return {"mode": self.mode, "threshold": self.threshold}
+        result = {"mode": self.mode, "threshold": self.threshold}
+        if self.mode == "fill_rate":
+            result["loading_mode"] = self.loading_mode
+        return result
 
 
 def _status_counts(pallets):
@@ -96,6 +99,8 @@ def apply_success_target(report: Dict, target: SuccessTarget) -> Dict:
             final_status = index_status
 
         pallet["goal_mode"] = target.mode
+        if target.mode == "fill_rate":
+            pallet["loading_mode"] = target.loading_mode
         pallet["goal_threshold"] = target.threshold
         pallet["goal_value"] = goal_value
         pallet["goal_status"] = final_status

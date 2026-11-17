@@ -1,0 +1,36 @@
+{
+  "ready": true,
+  "server_version": "8.4.13",
+  "host": "localhost",
+  "port": 3306,
+  "database": "zhuangdb",
+  "tables": {
+    "wcs_stock_box": {
+      "required_columns": 8,
+      "actual_columns": 8,
+      "pass": true
+    },
+    "wcs_stock_box_all": {
+      "required_columns": 8,
+      "actual_columns": 8,
+      "pass": true
+    },
+    "wcs_success_box": {
+      "required_columns": 22,
+      "actual_columns": 22,
+      "pass": true
+    },
+    "wcs_box_orientation": {
+      "required_columns": 10,
+      "actual_columns": 10,
+      "pass": true
+    },
+    "wcs_plc_queue": {
+      "required_columns": 13,
+      "actual_columns": 13,
+      "pass": true
+    }
+  },
+  "config_updated": true,
+  "note": "仅验证数据库连接与所需列；未运行装箱或访问WCS/PLC。"
+}

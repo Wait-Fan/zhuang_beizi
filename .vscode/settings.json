@@ -1,4 +1,9 @@
 {
     "python-envs.defaultEnvManager": "ms-python.python:conda",
-    "python-envs.defaultPackageManager": "ms-python.python:conda"
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "python.defaultInterpreterPath": "E:\\范卓燃\\码垛算法\\文件\\装箱算法\\zhuang\\PackingPortable\\python\\python.exe",
+    "python.analysis.extraPaths": [
+        "E:\\范卓燃\\码垛算法\\文件\\装箱算法\\zhuang\\packing-system\\packing",
+        "E:\\范卓燃\\码垛算法\\文件\\装箱算法\\zhuang\\packing-system\\ui"
+    ]
 }

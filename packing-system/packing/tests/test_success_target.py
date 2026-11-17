@@ -62,6 +62,7 @@ def test_fill_rate_target_uses_inclusive_threshold_and_preserves_index_status():
     assert report["success_target"] == {
         "mode": "fill_rate",
         "threshold": 0.75,
+        "loading_mode": "maximize",
     }
 
 
@@ -215,17 +216,17 @@ def test_reapplying_fill_target_preserves_existing_true_index_status():
 
 
 @pytest.mark.parametrize(
-    "threshold", [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90]
+    "threshold", [0.0001, 0.60, 0.7317, 0.95, 1.0]
 )
-def test_config_accepts_only_approved_fill_rate_steps(threshold):
+def test_config_accepts_valid_custom_fill_rates(threshold):
     target = SuccessTarget.from_mapping(
         {"mode": "fill_rate", "threshold": threshold}
     )
     assert target == SuccessTarget(mode="fill_rate", threshold=threshold)
 
 
-@pytest.mark.parametrize("threshold", [0.0, 0.74, 0.95, 70])
-def test_config_rejects_unapproved_fill_rate_steps(threshold):
+@pytest.mark.parametrize("threshold", [0.0, -0.01, 1.01, 70, float("nan"), float("inf")])
+def test_config_rejects_invalid_fill_rates(threshold):
     with pytest.raises(ValueError, match="装载率目标"):
         SuccessTarget.from_mapping(
             {"mode": "fill_rate", "threshold": threshold}

@@ -43,7 +43,7 @@ def test_end_to_end_fill_mode_accepts_index_failure_and_conserves_boxes():
     ]
     assert sorted(output_ids) == sorted(box["id"] for box in boxes)
     assert len(output_ids) == len(set(output_ids))
-    assert report["success_target"] == {"mode": "fill_rate", "threshold": 0.80}
+    assert report["success_target"] == {"mode": "fill_rate", "threshold": 0.80, "loading_mode": "maximize"}
     assert any(
         pallet["index_status"] == "FAILED"
         and pallet["final_status"] == "SUCCESS"

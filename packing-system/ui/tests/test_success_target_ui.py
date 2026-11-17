@@ -8,7 +8,7 @@ from PyQt5 import QtWidgets
 import realtime_dashboard_v3_clean as dashboard
 
 
-def test_header_offers_index_and_seven_fill_rate_targets(tmp_path, monkeypatch):
+def test_header_offers_index_and_custom_fill_target(tmp_path, monkeypatch):
     monkeypatch.setattr(
         dashboard,
         "_start_local_wcs_receiver",
@@ -25,26 +25,8 @@ def test_header_offers_index_and_seven_fill_rate_targets(tmp_path, monkeypatch):
             window.cmb_success_target.itemData(index)
             for index in range(window.cmb_success_target.count())
         ]
-        assert labels == [
-            "指数 192",
-            "装载率 60%",
-            "装载率 65%",
-            "装载率 70%",
-            "装载率 75%",
-            "装载率 80%",
-            "装载率 85%",
-            "装载率 90%",
-        ]
-        assert values == [
-            ("index", 192.0),
-            ("fill_rate", 0.60),
-            ("fill_rate", 0.65),
-            ("fill_rate", 0.70),
-            ("fill_rate", 0.75),
-            ("fill_rate", 0.80),
-            ("fill_rate", 0.85),
-            ("fill_rate", 0.90),
-        ]
+        assert labels == ["指数 192", "装箱率"]
+        assert values == [("index",192.0),("fill_rate",0.85)]
         assert window.current_success_target() == {
             "mode": "index",
             "threshold": 192.0,
@@ -83,6 +65,7 @@ def test_excel_temp_config_records_selected_success_target(tmp_path):
     assert config["success_target"] == {
         "mode": "fill_rate",
         "threshold": 0.85,
+        "loading_mode": "maximize",
     }
     assert config["constraints"]["shape_polish_level"] == "strong"
     assert config["constraints"]["shape_polish_seconds_per_pallet"] == 8.0

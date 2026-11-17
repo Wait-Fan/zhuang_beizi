@@ -1,0 +1,18 @@
+[
+  {
+    "path": ".vscode\\settings.json",
+    "existed": true
+  },
+  {
+    "path": ".vscode\\launch.json",
+    "existed": false
+  },
+  {
+    "path": "packing-system\\.vscode\\settings.json",
+    "existed": false
+  },
+  {
+    "path": "packing-system\\.vscode\\launch.json",
+    "existed": false
+  }
+]

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import queue
 import re
@@ -133,13 +134,7 @@ LOCAL_WCS_RECEIVER_CONFIG = LOCAL_WCS_RECEIVER_REL / "config" / "receiver_config
 
 SUCCESS_TARGET_OPTIONS = (
     ("指数 192", ("index", 192.0)),
-    ("装载率 60%", ("fill_rate", 0.60)),
-    ("装载率 65%", ("fill_rate", 0.65)),
-    ("装载率 70%", ("fill_rate", 0.70)),
-    ("装载率 75%", ("fill_rate", 0.75)),
-    ("装载率 80%", ("fill_rate", 0.80)),
-    ("装载率 85%", ("fill_rate", 0.85)),
-    ("装载率 90%", ("fill_rate", 0.90)),
+    ("装箱率", ("fill_rate", 0.85)),
 )
 
 SHAPE_POLISH_OPTIONS = (
@@ -165,14 +160,21 @@ def _shape_polish_seconds(level: str) -> float:
 
 def _normalize_success_target(value) -> dict:
     raw = value if isinstance(value, dict) else {}
-    candidate = (
-        str(raw.get("mode") or "index").strip().lower(),
-        float(raw.get("threshold", 192.0)),
-    )
-    approved = {option for _, option in SUCCESS_TARGET_OPTIONS}
-    if candidate not in approved:
-        return {"mode": "index", "threshold": 192.0}
-    return {"mode": candidate[0], "threshold": candidate[1]}
+    mode = str(raw.get("mode") or "index").strip().lower()
+    fallback = {"mode": "index", "threshold": 192.0}
+    try:
+        threshold = float(raw.get("threshold", .85 if mode == "fill_rate" else 192.))
+    except (ValueError, TypeError):
+        return fallback
+    if not math.isfinite(threshold):
+        return fallback
+    if mode == "index" and threshold == 192.:
+        return fallback
+    if mode == "fill_rate" and 0 < threshold <= 1:
+        loading = str(raw.get("loading_mode") or "maximize").strip().lower()
+        if loading in {"maximize", "stop_at_target"}:
+            return {"mode": mode, "threshold": threshold, "loading_mode": loading}
+    return fallback
 
 
 def _receiver_advertise_url(project_dir: Path) -> str:
@@ -1052,18 +1054,43 @@ class IndustrialPackingWorkbenchClean(IndustrialPackingWorkbench):
 
         self.cmb_success_target = QtWidgets.QComboBox()
         self.cmb_success_target.setObjectName("HeaderCombo")
-        self.cmb_success_target.setMinimumWidth(132)
+        self.cmb_success_target.setMinimumWidth(100)
         self.cmb_success_target.setFixedHeight(36)
-        self.cmb_success_target.setToolTip("选择最终成功判定：指数 192 或装载率挡位")
+        self.cmb_success_target.setToolTip("选择指数目标，或输入自定义体积装箱率")
         selected_index = 0
         configured = self._initial_success_target
         configured_value = (configured["mode"], configured["threshold"])
         for index, (label, value) in enumerate(SUCCESS_TARGET_OPTIONS):
             self.cmb_success_target.addItem(label, value)
-            if value == configured_value:
+            if value[0] == configured_value[0]:
                 selected_index = index
         self.cmb_success_target.setCurrentIndex(selected_index)
         run_box.addWidget(self.cmb_success_target)
+
+        self.sp_fill_rate = QtWidgets.QDoubleSpinBox()
+        self.sp_fill_rate.setObjectName("HeaderSpin")
+        self.sp_fill_rate.setRange(0.01, 100.0)
+        self.sp_fill_rate.setDecimals(2)
+        self.sp_fill_rate.setSuffix(" %")
+        self.sp_fill_rate.setKeyboardTracking(False)
+        self.sp_fill_rate.setValue(configured["threshold"]*100 if configured["mode"] == "fill_rate" else 85.)
+        self.sp_fill_rate.setFixedWidth(98)
+        self.sp_fill_rate.setFixedHeight(36)
+        self.sp_fill_rate.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+        self.sp_fill_rate.setStyleSheet("QDoubleSpinBox { background: #0f172a; color: #dbeafe; border: 1px solid #475569; border-radius: 8px; padding: 6px 8px; }")
+        self.sp_fill_rate.setToolTip("输入目标装箱率，范围 0.01%—100%，支持两位小数")
+        run_box.addWidget(self.sp_fill_rate)
+        self.cmb_loading_mode = QtWidgets.QComboBox()
+        self.cmb_loading_mode.setObjectName("HeaderCombo")
+        self.cmb_loading_mode.setFixedHeight(36)
+        self.cmb_loading_mode.setMinimumWidth(160)
+        self.cmb_loading_mode.addItem("达标后换下一托盘", "stop_at_target")
+        self.cmb_loading_mode.addItem("单托盘尽量多装", "maximize")
+        self.cmb_loading_mode.setCurrentIndex(self.cmb_loading_mode.findData(configured.get("loading_mode", "maximize")))
+        self.cmb_loading_mode.setToolTip("达标换盘：最后一箱可能略超目标；尽量多装：达到目标后继续尝试放置。原有约束始终生效。")
+        run_box.addWidget(self.cmb_loading_mode)
+        self.cmb_success_target.currentIndexChanged.connect(self._on_success_target_changed)
+        self._on_success_target_changed()
 
         self.lbl_shape_polish = QtWidgets.QLabel("规整")
         self.lbl_shape_polish.setObjectName("HeaderCaption")
@@ -2180,7 +2207,7 @@ class IndustrialPackingWorkbenchClean(IndustrialPackingWorkbench):
         target_label = (
             f"指数 {target['threshold']:g}"
             if target["mode"] == "index"
-            else f"装载率 {target['threshold']:.0%}"
+            else f"装箱率 {target['threshold']*100:g}%（{self.cmb_loading_mode.currentText()}）"
         )
         msg = (
             "当前算法设置：\n\n"
@@ -2199,8 +2226,18 @@ class IndustrialPackingWorkbenchClean(IndustrialPackingWorkbench):
         combo = getattr(self, "cmb_success_target", None)
         value = combo.currentData() if combo is not None else None
         if isinstance(value, (tuple, list)) and len(value) == 2:
+            if value[0] == "fill_rate":
+                self.sp_fill_rate.interpretText()
+                return {"mode": "fill_rate", "threshold": self.sp_fill_rate.value()/100.,
+                        "loading_mode": str(self.cmb_loading_mode.currentData())}
             return {"mode": str(value[0]), "threshold": float(value[1])}
         return dict(self._initial_success_target)
+
+    def _on_success_target_changed(self, *_args) -> None:
+        value = self.cmb_success_target.currentData()
+        enabled = isinstance(value, (tuple, list)) and value[0] == "fill_rate"
+        self.sp_fill_rate.setVisible(enabled)
+        self.cmb_loading_mode.setVisible(enabled)
 
     def current_shape_polish_level(self) -> str:
         combo = getattr(self, "cmb_shape_polish", None)
@@ -2317,6 +2354,9 @@ class IndustrialPackingWorkbenchClean(IndustrialPackingWorkbench):
                 self.generated_config_path = cfg
                 self.config_path = cfg
                 self._write_log(f"[UI] 使用已选择 Excel：{self.selected_excel_original}")
+        selected_target = self.current_success_target()
+        if selected_target["mode"] == "fill_rate":
+            self._write_log(f"[UI] 目标装箱率：{selected_target['threshold']*100:g}%；装盘方式：{self.cmb_loading_mode.currentText()}。")
         self.start_backend_packing(run_mode=run_mode)
 
     # ------------------------------------------------------------------ backend

@@ -1,0 +1,17 @@
+[
+  {
+    "path": "packing-system\\tools\\windows\\start_realtime_dashboard_v3_clean.bat",
+    "existed": true,
+    "sha256": "c20d427c2449db70574d4e5327fed8252fe023dd9188fbf8dd7563541e3b58e4"
+  },
+  {
+    "path": "启动装箱工作台.bat",
+    "existed": false,
+    "sha256": "84cfbdbf2fc0e4607bb96ae90942a4914eaa1634169b7b56c1cc23bbce68f8ca"
+  },
+  {
+    "path": ".vscode\\settings.json",
+    "existed": true,
+    "sha256": "09e26edc52f56a5fd5092da501b1896dcba28a4ded634ccbd38cc7cdea9850f9"
+  }
+]

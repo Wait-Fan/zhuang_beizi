@@ -188,6 +188,6 @@ database:
   port: 3306
   user: root
   # TODO(数据库密码): 现场部署改成正式密码。
-  password: "123456"
+  password: "033510"
   database: zhuangdb
   charset: utf8mb4

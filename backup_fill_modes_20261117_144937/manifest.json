@@ -1,0 +1,57 @@
+{
+  "target": "E:\\范卓燃\\码垛算法\\文件\\装箱算法\\zhuang\\packing-system",
+  "backup": "E:\\范卓燃\\码垛算法\\文件\\装箱算法\\zhuang\\backup_fill_modes_20261117_144937",
+  "files": [
+    {
+      "path": "packing/src/main/success_target.py",
+      "existed": true,
+      "sha256": "e0548069054c50c6464fdefbb2f08fcfe36ea5fa3a70b18114492c1245da1198"
+    },
+    {
+      "path": "packing/src/main/workflow.py",
+      "existed": true,
+      "sha256": "79a88585191696cece67341bd879b0ab680f22bf1785ec5b3cc9245d1e9f75e9"
+    },
+    {
+      "path": "packing/src/main/fill_rate_packer.py",
+      "existed": false,
+      "sha256": "062b3c976e68482643cef1d449dd858a248d7bf5038b9dc44caffe5fc34992a5"
+    },
+    {
+      "path": "ui/realtime_dashboard_v3_clean.py",
+      "existed": true,
+      "sha256": "539b934508b491195c560df358415ed6d0d7971c61b27ca657eadfd8187a202a"
+    },
+    {
+      "path": "packing/tests/test_success_target.py",
+      "existed": true,
+      "sha256": "c8d45d5bbd55aadec59b44b5e88f89c64c55707b31a0aa1bed87bd24c00dda4a"
+    },
+    {
+      "path": "packing/tests/test_target_end_to_end.py",
+      "existed": true,
+      "sha256": "12351c7d401c6e20a1cb38d979a8e5817ae2b79880d58759c432472115b1a64e"
+    },
+    {
+      "path": "packing/tests/test_fill_loading_modes.py",
+      "existed": false,
+      "sha256": "465d09733934a7f0c130a15f621c2103dd804f72a3639f7e15009b9064ff1767"
+    },
+    {
+      "path": "ui/tests/test_success_target_ui.py",
+      "existed": true,
+      "sha256": "3205514f1bd732e350b348ea9f01bca47a3db1a9a5b8556139c7bf1cd1e63e6f"
+    },
+    {
+      "path": "ui/tests/test_custom_fill_controls.py",
+      "existed": false,
+      "sha256": "2d4e691d161b2666968e85c96846a8bf2d7fb51076243205f1103ae0c5e93aba"
+    },
+    {
+      "path": "docs/自定义装箱率与装盘方式.md",
+      "existed": false,
+      "sha256": "c63751d20b5f605228586c4427b1098468c2212620cfc83707cae1e5aafbcb3f"
+    }
+  ],
+  "configChanged": false
+}

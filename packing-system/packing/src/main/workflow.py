@@ -177,6 +177,23 @@ class PackingWorkflow:
                 self._prepare_group_target(pallet_type, boxes_in_group)
             )
 
+            if (self._success_target.mode == "fill_rate"
+                    and self._success_target.loading_mode == "stop_at_target"):
+                from .fill_rate_packer import pack_fill_rate_group
+                type_plan, runtime, diag = pack_fill_rate_group(
+                    self.packer, pallet_type, sales_order_no, boxes_in_group,
+                    target_mpm, self._success_target.loading_mode,
+                )
+                runtime.update(repack=0.0, total=time.time()-group_start)
+                stats = ResultFormatter.build_type_stats(
+                    type_plan, pallet_type, sales_order_no, diag, 0, runtime, {},
+                )
+                by_type_stats[f"{pallet_type}__{sales_order_no}"] = stats
+                final_plan.extend(type_plan)
+                runtime_stats["group_pack_seconds"] += runtime["packing"]
+                runtime_stats["group_total_seconds"] += runtime["total"]
+                continue
+
             # 主算法 = 全局列式装箱 + 柱级组合优化（仅对"适合的规则分组"）：
             # 自带凑柱→ILP→网格→残料兜底，不依赖救援链。不适合的复杂/不规则
             # 分组（柱化注定多非满柱）自动回退旧 beam + 配方优先 + 救援链，避免退步。
@@ -311,14 +328,12 @@ class PackingWorkflow:
             runtime_stats["group_total_seconds"] += group_total
             self._print_group_summary(type_stats, rescued, pack_runtime["packing"], pack_runtime["retry"], repack_time, group_total, pallet_type, sales_order_no, repack)
 
-        self._cross_group_fill_compact(
-            final_plan,
-            by_type_stats,
-            target_override=(
-                self._success_target.threshold
-                if self._success_target.mode == "fill_rate" else None
-            ),
-        )
+        if not (self._success_target.mode == "fill_rate"
+                and self._success_target.loading_mode == "stop_at_target"):
+            self._cross_group_fill_compact(
+                final_plan, by_type_stats,
+                target_override=self._success_target.threshold if self._success_target.mode == "fill_rate" else None,
+            )
         shape_diag = self._shape_polisher.polish_plans(final_plan)
         if shape_diag["attempted"]:
             print(
@@ -487,7 +502,10 @@ class PackingWorkflow:
         逐组循环、救援链、门禁完全不改。纯规则组 / 纯杂组不拆（零回归）。
         盘号/订单号的后缀由 _restore_split_orders 在输出前还原，对外不可见。
         """
-        if self._gcp_packer is None:
+        if self._gcp_packer is None or (
+            self._success_target.mode == "fill_rate"
+            and self._success_target.loading_mode == "stop_at_target"
+        ):
             return grouped
         new_grouped: Dict = {}
         split_cnt = 0

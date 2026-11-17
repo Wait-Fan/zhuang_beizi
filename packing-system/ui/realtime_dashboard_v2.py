@@ -847,7 +847,7 @@ class PalletPreviewCanvas(QtWidgets.QWidget):
 
         distinct_mode = self.color_mode == "按箱子区分着色"
         meshdata = self._box_meshdata()
-        for idx, it in enumerate(items[:140]):
+        for idx, it in enumerate(items):
             pos = it.get("position", {}) or {}
             x = safe_float(pos.get("x"), 0.0)
             y = safe_float(pos.get("y"), 0.0)

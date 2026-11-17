@@ -84,6 +84,7 @@ def test_report_persister_writes_pallet_excel_summary():
                         "pallet_dims": {"length": 1440, "width": 2240, "height": 720},
                     }],
                     "stability_checks": {"status": "SUCCESS"},
+                    "fill_rate": 0.9201388888888888,
                     "mpm_total": 192.0,
                     "mpm_target": 192.0,
                     "mpm_gap": 0.0,
@@ -125,6 +126,7 @@ def test_report_persister_writes_pallet_excel_summary():
             "托盘ID",
             "托盘尺寸(mm)",
             "箱子数量",
+            "装箱率",
             "稳定性状态",
             "指数",
             "目标指数",
@@ -141,6 +143,18 @@ def test_report_persister_writes_pallet_excel_summary():
         assert df.iloc[0]["指数状态"] == "FAILED"
         assert df.iloc[0]["最终目标"] == "fill_rate"
         assert df.iloc[0]["最终状态"] == "SUCCESS"
+        assert df.iloc[0]["装箱率"] == pytest.approx(0.9201388888888888)
+        assert pd.isna(df.iloc[1]["装箱率"])
+        from openpyxl import load_workbook
+        workbook = load_workbook(excel_path)
+        try:
+            sheet = workbook.active
+            column = list(df.columns).index("装箱率") + 1
+            assert sheet.cell(2, column).number_format == "0.00%"
+            assert sheet.cell(2, column).data_type == "n"
+        finally:
+            workbook.close()
+
 
 
 def test_candidate_selection_preserves_success_potential():

@@ -60,6 +60,7 @@ class JsonFileReportPersister:
                 "托盘ID": pallet.get("pallet_id", ""),
                 "托盘尺寸(mm)": pallet_size,
                 "箱子数量": len(items),
+                "装箱率": pallet.get("fill_rate", ""),
                 "稳定性状态": (pallet.get("stability_checks") or {}).get(
                     "status", ""
                 ),
@@ -76,7 +77,14 @@ class JsonFileReportPersister:
                 ),
             })
 
-        pd.DataFrame(rows).to_excel(path, index=False, engine="openpyxl")
+        frame = pd.DataFrame(rows)
+        with pd.ExcelWriter(path, engine="openpyxl") as writer:
+            frame.to_excel(writer, index=False)
+            if "装箱率" in frame.columns:
+                sheet = writer.sheets["Sheet1"]
+                column = frame.columns.get_loc("装箱率") + 1
+                for row in range(2, len(frame) + 2):
+                    sheet.cell(row, column).number_format = "0.00%"
 
 
 class NullReportPersister:

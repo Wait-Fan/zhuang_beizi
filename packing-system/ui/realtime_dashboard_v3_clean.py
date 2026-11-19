@@ -107,7 +107,7 @@ try:
         receiver_entry_exists,
         wcs_entry_exists,
     )
-    from realtime_dashboard_v2 import (
+    from realtime_dashboard_v2 import (        
         IndustrialPackingWorkbench,
         StatusPill,
         StepCard,

@@ -20,6 +20,7 @@ from src.config.constants import MAX_BOX_GAP_MM
 from src.geometry.center_of_mass import validate_center_of_mass
 from src.geometry.gap_checker import passes_box_gap_constraint
 from src.geometry.support import calculate_direct_supported_area, direct_support_ratio
+from src.utils.dimensions import box_orientations, effective_dims
 from src.utils.dimensions import raw_dims as get_raw_dims
 from src.utils.helpers import (
     apply_suction_pose_fields,
@@ -223,10 +224,8 @@ def build_direct_layer_packing_solution(
                 }
                 if same_size_heavier_below_enabled and not (
                     passes_same_size_heavier_below_constraint(
-                        item,
-                        point,
-                        dims,
-                        placed,
+                        item, point, dims, placed,
+                        compare_all_axes=getattr(constraint_config, 'allow_box_rotation_3d', False),
                     )
                 ):
                     return []
@@ -379,57 +378,59 @@ def build_centered_single_box_solution(
             str(item.get('id')),
         ),
     )
+    allow_rotation = getattr(constraint_config, 'allow_box_rotation_3d', False)
     for item in ordered_items:
-        raw_dims = {
-            'length': float(item.get('length', 0) or 0),
-            'width': float(item.get('width', 0) or 0),
-            'height': float(item.get('height', 0) or 0),
-        }
-        dims = {
-            'length': raw_dims['length'] + xy_tolerance,
-            'width': raw_dims['width'] + xy_tolerance,
-            'height': raw_dims['height'] + z_tolerance,
-        }
-        if (
-            dims['length'] <= 0
-            or dims['width'] <= 0
-            or dims['height'] <= 0
-            or dims['length'] > pallet_length + 1e-9
-            or dims['width'] > pallet_width + 1e-9
-            or dims['height'] > pallet_height + 1e-9
-        ):
-            continue
-
-        point = {
-            'x': (pallet_length - dims['length']) / 2.0,
-            'y': (pallet_width - dims['width']) / 2.0,
-            'z': 0.0,
-        }
-        if reachability_enabled:
-            suction_pose = reachability_checker.find_reachable_suction_pose(
-                point, dims, [], raw_dims=raw_dims
-            )
-            if suction_pose is None:
-                continue
+        if allow_rotation:
+            initial_dims = get_raw_dims(item)
+            orientations = box_orientations(initial_dims)
         else:
-            suction_pose = None
+            initial_dims = {axis: float(item.get(axis, 0) or 0)
+                            for axis in ('length', 'width', 'height')}
+            orientations = (initial_dims,)
+        for raw_dims in orientations:
+            dims = effective_dims(raw_dims, xy_tolerance, z_tolerance)
+            if (
+                dims['length'] <= 0
+                or dims['width'] <= 0
+                or dims['height'] <= 0
+                or dims['length'] > pallet_length + 1e-9
+                or dims['width'] > pallet_width + 1e-9
+                or dims['height'] > pallet_height + 1e-9
+            ):
+                continue
 
-        item_copy = deepcopy(item)
-        item_copy['position'] = point
-        item_copy['length'] = dims['length']
-        item_copy['width'] = dims['width']
-        item_copy['height'] = dims['height']
-        item_copy['raw_length'] = raw_dims['length']
-        item_copy['raw_width'] = raw_dims['width']
-        item_copy['raw_height'] = raw_dims['height']
-        if suction_pose is not None:
-            apply_suction_pose_fields(item_copy, suction_pose)
-        base_area = dims['length'] * dims['width']
-        item_copy['supported_area'] = float(base_area)
-        item_copy['support_ratio'] = 1.0 if base_area > 0 else 0.0
-        if validate_center_of_mass(
-            {'packed_items': [item_copy]}, pallet_dims, tolerance=com_tolerance
-        ).get('is_stable', False):
-            return [item_copy]
+            point = {
+                'x': (pallet_length - dims['length']) / 2.0,
+                'y': (pallet_width - dims['width']) / 2.0,
+                'z': 0.0,
+            }
+            if reachability_enabled:
+                suction_pose = reachability_checker.find_reachable_suction_pose(
+                    point, dims, [], raw_dims=raw_dims
+                )
+                if suction_pose is None:
+                    continue
+            else:
+                suction_pose = None
+
+            item_copy = deepcopy(item)
+            if raw_dims != initial_dims:
+                item_copy['layered_oriented'] = True
+            item_copy['position'] = point
+            item_copy['length'] = dims['length']
+            item_copy['width'] = dims['width']
+            item_copy['height'] = dims['height']
+            item_copy['raw_length'] = raw_dims['length']
+            item_copy['raw_width'] = raw_dims['width']
+            item_copy['raw_height'] = raw_dims['height']
+            if suction_pose is not None:
+                apply_suction_pose_fields(item_copy, suction_pose)
+            base_area = dims['length'] * dims['width']
+            item_copy['supported_area'] = float(base_area)
+            item_copy['support_ratio'] = 1.0 if base_area > 0 else 0.0
+            if validate_center_of_mass(
+                {'packed_items': [item_copy]}, pallet_dims, tolerance=com_tolerance
+            ).get('is_stable', False):
+                return [item_copy]
 
     return []

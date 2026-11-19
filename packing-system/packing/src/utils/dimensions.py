@@ -4,7 +4,8 @@
 提供箱子尺寸的提取和转换功能。
 """
 
-from typing import Dict, Optional
+from itertools import permutations
+from typing import Dict, Iterator, Optional
 
 
 def raw_dims(item: Dict, fallback_dims: Optional[Dict] = None) -> Dict[str, float]:
@@ -78,3 +79,11 @@ def effective_dims(
         'width': float(raw_dims['width']) + xy_tolerance,
         'height': float(raw_dims['height']) + z_tolerance,
     }
+
+
+def box_orientations(dimensions: Dict[str, float]) -> Iterator[Dict[str, float]]:
+    """枚举互异的轴对齐尺寸，原始朝向优先。"""
+    axes = ("length", "width", "height")
+    sizes = tuple(dimensions[axis] for axis in axes)
+    for orientation in dict.fromkeys(permutations(sizes)):
+        yield dict(zip(axes, orientation))

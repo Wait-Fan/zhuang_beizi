@@ -8,6 +8,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 import random
 import time
 from copy import deepcopy
+from itertools import product
 
 from .candidate_generator import CandidatePointGenerator
 from .placement_validator import PlacementValidator
@@ -18,7 +19,8 @@ from .stacking_policy import (
 from .suction_planner import SuctionPlanner
 from ..geometry.gap_checker import side_gap_flags
 from ..geometry.weight_limit import box_weight, fits_weight, pallet_weight_cap
-from ..utils.dimensions import raw_dims
+from ..utils.dimensions import box_orientations, effective_dims, raw_dims
+from ..utils.helpers import apply_suction_pose_fields
 
 
 class BeamSearchPacker:
@@ -112,6 +114,7 @@ class BeamSearchPacker:
             z_tolerance = 0.0
 
         self.pallet_dims = pallet_dims
+        self.allow_box_rotation_3d = getattr(constraint_config, 'allow_box_rotation_3d', False)
         self.support_ratio_threshold = support_ratio_threshold
         self.size_tolerance = size_tolerance
         self.z_tolerance = z_tolerance
@@ -181,7 +184,7 @@ class BeamSearchPacker:
         prefiltered_items = []
         pre_unfitted = []
         for item in items_to_pack:
-            if self.placement_validator.can_fit_in_pallet(item):
+            if self._can_fit_in_pallet(item):
                 prefiltered_items.append(item)
             else:
                 pre_unfitted.append(item)
@@ -257,6 +260,14 @@ class BeamSearchPacker:
         self.placed_boxes = sanitized_packed
         return sanitized_packed, sanitized_unfitted
 
+    def _can_fit_in_pallet(self, item: Dict) -> bool:
+        if not self.allow_box_rotation_3d:
+            return self.placement_validator.can_fit_in_pallet(item)
+        return any(
+            self.placement_validator.can_fit_in_pallet(orientation)
+            for orientation in box_orientations(raw_dims(item))
+        )
+
     def _order_items(
         self,
         items: List[Dict],
@@ -321,7 +332,7 @@ class BeamSearchPacker:
         prefiltered = []
         pre_unfitted = []
         for item in items_to_add:
-            if self.placement_validator.can_fit_in_pallet(item):
+            if self._can_fit_in_pallet(item):
                 prefiltered.append(item)
             else:
                 pre_unfitted.append(item)
@@ -422,6 +433,7 @@ class BeamSearchPacker:
                     state["unfitted_items"].extend(ordered_items[item_idx:])
                 break
             next_states = []
+            step_beam_width = beam_width
             for state in states:
                 if deadline is not None and time.monotonic() >= deadline:
                     next_states.append({
@@ -486,8 +498,13 @@ class BeamSearchPacker:
                         next_states.append(new_state)
                     continue
 
+                placement_limit = candidate_limit
+                if self.allow_box_rotation_3d and not state['placed_boxes']:
+                    # 空盘的各朝向通常同分，保留它们到下一箱再比较。
+                    placement_limit = max(placement_limit, len(candidates))
+                    step_beam_width = max(step_beam_width, len(candidates))
                 scored_candidates = sorted(candidates, key=lambda c: c['score'])
-                for candidate in scored_candidates[:candidate_limit]:
+                for candidate in scored_candidates[:placement_limit]:
                     new_state = {
                         "placed_boxes": list(state['placed_boxes']) + [candidate['box']],
                         "unfitted_items": list(state['unfitted_items'])
@@ -500,7 +517,7 @@ class BeamSearchPacker:
                     s, target_mpm, target_policy, state_tiebreaker
                 ),
                 reverse=True,
-            )[:beam_width]
+            )[:step_beam_width]
             if not states:
                 break
 
@@ -543,14 +560,18 @@ class BeamSearchPacker:
                 - 'box': 放置后的箱子对象（包含位置和吸盘信息）
                 - 'score': 放置得分
         """
-        raw_length = float(item.get('raw_length', item.get('length', 0)) or 0)
-        raw_width = float(item.get('raw_width', item.get('width', 0)) or 0)
-        raw_height = float(item.get('raw_height', item.get('height', 0)) or 0)
-        dims = {
-            'length': raw_length + self.size_tolerance,
-            'width': raw_width + self.size_tolerance,
-            'height': raw_height + self.z_tolerance
-        }
+        input_dims = raw_dims(item)
+        orientations = box_orientations(input_dims) if self.allow_box_rotation_3d else (input_dims,)
+        variants = []
+        for oriented in orientations:
+            if self.allow_box_rotation_3d and not self.placement_validator.can_fit_in_pallet(oriented):
+                continue
+            variant = item
+            if oriented != input_dims:
+                variant = dict(item, layered_oriented=True)
+                variant.update({f'raw_{axis}': value for axis, value in oriented.items()})
+            dims = effective_dims(oriented, self.size_tolerance, self.z_tolerance)
+            variants.append((variant, oriented, dims))
 
         # 生成候选点
         candidate_points = self.candidate_generator.generate_candidate_points(placed_boxes)
@@ -573,7 +594,7 @@ class BeamSearchPacker:
         feasible_candidates = []
         for z_level in sorted_z_levels:
             layer_candidates = []
-            for point in grouped_by_z[z_level]:
+            for point, (variant, oriented, dims) in product(grouped_by_z[z_level], variants):
                 # 边界检查
                 if not self.placement_validator.is_within_bounds(point, dims):
                     continue
@@ -581,7 +602,8 @@ class BeamSearchPacker:
                 # 同尺寸重箱在下（可关约束）
                 if self.same_size_heavier_below_enabled and not (
                     self.placement_validator.satisfies_stacking_order(
-                        item, point, dims, placed_boxes
+                        variant, point, dims, placed_boxes,
+                        compare_all_axes=self.allow_box_rotation_3d,
                     )
                 ):
                     continue
@@ -589,7 +611,7 @@ class BeamSearchPacker:
                 # 小面积在下：正下方不得有投影面积更大的箱子（可关约束）
                 if self.footprint_area_below_enabled and not (
                     self.placement_validator.satisfies_footprint_area_order(
-                        item, point, dims, placed_boxes
+                        variant, point, dims, placed_boxes
                     )
                 ):
                     continue
@@ -604,9 +626,8 @@ class BeamSearchPacker:
 
                 # 机器人可达性检查
                 if self.robot_reachability_enabled:
-                    item_raw_dims = raw_dims(item)
                     suction_pose = self.suction_planner.find_reachable_suction_pose(
-                        point, dims, placed_boxes, raw_dims=item_raw_dims
+                        point, dims, placed_boxes, raw_dims=oriented
                     )
                     if suction_pose is None:
                         continue
@@ -614,32 +635,12 @@ class BeamSearchPacker:
                     suction_pose = None
 
                 # 创建放置后的箱子对象
-                placed_item = deepcopy(item)
+                placed_item = deepcopy(variant)
                 placed_item['position'] = dict(point)
-                placed_item['raw_length'] = float(
-                    item.get('raw_length', item.get('length', 0)) or 0
-                )
-                placed_item['raw_width'] = float(
-                    item.get('raw_width', item.get('width', 0)) or 0
-                )
-                placed_item['raw_height'] = float(
-                    item.get('raw_height', item.get('height', 0)) or 0
-                )
-                placed_item['length'] = dims['length']
-                placed_item['width'] = dims['width']
-                placed_item['height'] = dims['height']
-
-                # 添加吸盘信息
+                placed_item.update(dims)
+                placed_item.update({f'raw_{axis}': value for axis, value in oriented.items()})
                 if suction_pose:
-                    placed_item['suction_box_corner'] = suction_pose['box_corner']
-                    placed_item['suction_cup_corner'] = suction_pose['cup_corner']
-                    placed_item['suction_orientation'] = suction_pose['orientation']
-                    placed_item['suction_cup_x_size'] = suction_pose['cup_x_size']
-                    placed_item['suction_cup_y_size'] = suction_pose['cup_y_size']
-                    placed_item['suction_rect_x_min'] = suction_pose['cup_rect']['x_min']
-                    placed_item['suction_rect_x_max'] = suction_pose['cup_rect']['x_max']
-                    placed_item['suction_rect_y_min'] = suction_pose['cup_rect']['y_min']
-                    placed_item['suction_rect_y_max'] = suction_pose['cup_rect']['y_max']
+                    apply_suction_pose_fields(placed_item, suction_pose)
 
                 # 计算放置得分
                 score = self._placement_score(point, dims, placed_boxes)

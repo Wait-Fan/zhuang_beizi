@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, List, Sequence
 
 from src.main.result_formatter import ResultFormatter
+from src.utils.dimensions import raw_dims
 
 
 @dataclass
@@ -93,6 +94,8 @@ def _extract_repack_boxes(report: Dict) -> List[Dict]:
             continue
         for item in pallet.get("packed_items", []) or []:
             box = deepcopy(item)
+            # 重排时按实际箱体尺寸重新加容差，避免重复放大上一轮的放置尺寸。
+            box.update(raw_dims(item))
             _strip_placement_fields(box)
             boxes.append(box)
     return boxes

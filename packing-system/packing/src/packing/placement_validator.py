@@ -207,13 +207,12 @@ class PlacementValidator:
         point: Dict[str, float],
         dims: Dict[str, float],
         placed_boxes: List[Dict],
+        *,
+        compare_all_axes: bool = False,
     ) -> bool:
         """Check same-size heavier-below stacking order."""
         return passes_same_size_heavier_below_constraint(
-            item,
-            point,
-            dims,
-            placed_boxes,
+            item, point, dims, placed_boxes, compare_all_axes=compare_all_axes,
         )
 
     def satisfies_footprint_area_order(

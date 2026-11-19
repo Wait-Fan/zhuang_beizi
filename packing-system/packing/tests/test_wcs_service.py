@@ -388,6 +388,20 @@ def test_wcs_cli_defaults_to_continuous_and_rejects_unknown_mode():
         run_wcs_service._parse_cli(["--run-mode", "local-once"])
 
 
+def test_wcs_uses_only_upright_orientations(monkeypatch, tmp_path):
+    config = tmp_path / "packing_config.yaml"
+    config.write_text("constraints:\n  allow_box_rotation_3d: true\n", encoding="utf-8")
+    monkeypatch.setattr(wcs_service_module, "load_data_source_config", lambda path: None)
+    monkeypatch.setattr(wcs_service_module, "_load_db_config_from_yaml", lambda path: None)
+    monkeypatch.setattr(WcsPackingService, "_ensure_dirs", lambda self: None)
+    monkeypatch.setattr(WcsPackingService, "_reload_reference_data", lambda self: None)
+
+    service = WcsPackingService(config)
+
+    assert service._constraint_config.allow_box_rotation_3d is False
+    assert service._constraint_config.allow_box_rotation_90 is True
+
+
 def test_wcs_uses_execution_cases_and_map_when_planning_succeeds(tmp_path):
     cases = [{"box_unique_id": "execution-id", "layers": []}]
     plan_map = {"execution-id": {"pallet_id": "P1", "packed_items": []}}

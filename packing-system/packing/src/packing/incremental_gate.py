@@ -140,7 +140,8 @@ def incremental_pallet_ok(
 
     if same_size_heavier_below_enabled and not (
         passes_same_size_heavier_below_constraint(
-            new_box, pos, dims, placed
+            new_box, pos, dims, placed,
+            compare_all_axes=getattr(constraint_config, 'allow_box_rotation_3d', False),
         )
     ):
         return False

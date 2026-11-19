@@ -1442,6 +1442,7 @@ class PalletPacker:
                 point,
                 dims,
                 current,
+                compare_all_axes=self._cfg.allow_box_rotation_3d,
             ):
                 return []
             # 小面积在下：整层组的底层直接压在 placed 之上，跨底面时会违例。
@@ -1549,6 +1550,7 @@ class PalletPacker:
                 point,
                 dims,
                 current,
+                compare_all_axes=self._cfg.allow_box_rotation_3d,
             ):
                 x += dims['length']
                 row_width = max(row_width, dims['width'])

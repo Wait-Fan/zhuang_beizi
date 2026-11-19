@@ -75,8 +75,7 @@ def build_json_output_plan(
             if raw is None:
                 continue
             if item.get('layered_oriented'):
-                # 列式装箱已按放置朝向写入 raw_*（可能相对原始箱旋转 90°）；
-                # 保留它，避免用原始箱尺寸恢复而丢失朝向，破坏间隙/重叠判定。
+                # 放置时已把朝向写入 raw_*。保留放置尺寸供几何校验和展示。
                 raw_length = float(item.get('raw_length', item.get('length', 0)) or 0)
                 raw_width = float(item.get('raw_width', item.get('width', 0)) or 0)
                 raw_height = float(item.get('raw_height', item.get('height', 0)) or 0)

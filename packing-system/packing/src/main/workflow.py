@@ -101,7 +101,8 @@ class PackingWorkflow:
         # 其它（'beam'）= 旧 beam + 配方优先 + 救援链。
         self._main_packer = getattr(constraint_config, 'main_packer', 'gcp')
         self._gcp_packer = None
-        if self._main_packer == 'gcp':
+        # GCP 的柱形和层高按直立箱预先计算。六朝向模式走逐箱放置路径。
+        if self._main_packer == 'gcp' and not constraint_config.allow_box_rotation_3d:
             from ..packing.global_column_packer import GlobalColumnPacker
             self._gcp_packer = GlobalColumnPacker(constraint_config=constraint_config)
 

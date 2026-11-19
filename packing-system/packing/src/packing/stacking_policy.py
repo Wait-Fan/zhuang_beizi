@@ -108,6 +108,8 @@ def passes_same_size_heavier_below_constraint(
     dims: Dict[str, float],
     placed_boxes: List[Dict],
     eps: float = 1e-6,
+    *,
+    compare_all_axes: bool = False,
 ) -> bool:
     if point["z"] <= eps:
         return True
@@ -117,6 +119,8 @@ def passes_same_size_heavier_below_constraint(
         return True
 
     candidate_size = size_key(item)
+    if compare_all_axes:
+        candidate_size = tuple(sorted(candidate_size))
     for support in placed_boxes:
         support_pos = support.get("position")
         if not support_pos:
@@ -126,7 +130,10 @@ def passes_same_size_heavier_below_constraint(
             continue
         if not has_positive_xy_overlap(point, dims, support, eps=eps):
             continue
-        if size_key(support) != candidate_size:
+        support_size = size_key(support)
+        if compare_all_axes:
+            support_size = tuple(sorted(support_size))
+        if support_size != candidate_size:
             continue
         support_weight = _weight(support)
         if support_weight <= 0.0:

@@ -46,7 +46,7 @@ constraints:
   suction_reachability_enabled: true
   # 小面积在下：任一箱子正下方不得有投影面积更大的箱子（对全部箱子生效）。
   # 旧键 small_box_below_enabled 仍被识别并映射到本键。
-  footprint_area_below_enabled: true
+  footprint_area_below_enabled: false
   same_size_heavier_below_enabled: true
   height_multiple_layering_enabled: true
   # 平顶不缺角（甲方 2026-07 需求）：正常订单（全规则箱订单）的达标盘必须
@@ -64,6 +64,8 @@ constraints:
   # 整层从不达标变达标"的箱型换向，救旋转敏感订单且不打乱已紧凑的难组布局）。
   # 仅作用于 baseline 路径；GCP 有独立朝向处理(_fp_orient/CP-SAT)。默认 true。
   allow_box_rotation_90: true
+  # 离线装箱 true：逐箱搜索尝试最多六种朝向（含侧放）；false：沿用 main_packer。
+  allow_box_rotation_3d: true
   # 达标后限时尝试更平整、紧凑的摆法；失败时保留原结果，不改变成功判定。
   shape_polish_enabled: true
   # fast=快速约1秒；standard=标准约3秒；strong=强力约8秒。

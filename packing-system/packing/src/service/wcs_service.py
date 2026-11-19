@@ -22,7 +22,7 @@ import json
 import math
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Set
@@ -413,7 +413,10 @@ class WcsPackingService:
         self._repo = WcsStockRepository(self._db_cfg)
         self._repo_all = WcsStockAllRepository(self._db_cfg)
         self._safe_compare = safe_compare
-        self._constraint_config = load_constraint_config(self._config_path)
+        # 现场接口只有平面 0°/90° 转向指令，侧放方案留给离线装箱。
+        self._constraint_config = replace(
+            load_constraint_config(self._config_path), allow_box_rotation_3d=False,
+        )
         yaml_path = _resolve_yaml_path(self._config_path)
         config_data = ConfigLoader(yaml_path).config_data if yaml_path else {}
         self._success_target = SuccessTarget.from_mapping(

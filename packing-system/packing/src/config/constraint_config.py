@@ -130,6 +130,8 @@ class ConstraintConfig:
     # 修复固定朝向对旋转敏感箱型（如 530×350、740×330）系统性装不满的缺陷。
     # 仅作用于 baseline 路径；GCP 有独立朝向处理(_fp_orient/CP-SAT)，不受影响。
     allow_box_rotation_90: bool = True
+    # 逐箱搜索允许任意一条边竖直，旧配置默认沿用原装箱流程。
+    allow_box_rotation_3d: bool = False
 
     # —— 达标盘外形软优化（不参与成功判定）——
     shape_polish_enabled: bool = True

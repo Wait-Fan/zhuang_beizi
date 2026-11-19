@@ -177,7 +177,10 @@ def validate_pallet_constraints(
             })
 
         if same_size_heavier_below_enabled and not (
-            passes_same_size_heavier_below_constraint(item, pos, dims, others)
+            passes_same_size_heavier_below_constraint(
+                item, pos, dims, others,
+                compare_all_axes=getattr(constraint_config, 'allow_box_rotation_3d', False),
+            )
         ):
             violations.append({
                 "type": "same_size_heavier_below",

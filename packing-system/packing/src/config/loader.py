@@ -212,6 +212,7 @@ def create_default_config_yaml(output_path: Path) -> None:
             'suction_allow_rotation_90': True,
             # —— baseline 箱子 90° 旋转（朝向规整，带几何门槛；默认 True）——
             'allow_box_rotation_90': True,
+            'allow_box_rotation_3d': False,
         },
         'tolerances': {
             'xy_tolerance': 2.0,

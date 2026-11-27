@@ -1,10 +1,10 @@
 {
     "python-envs.defaultEnvManager": "ms-python.python:system",
     "python-envs.defaultPackageManager": "ms-python.python:pip",
-    "python.defaultInterpreterPath": "E:\\范卓燃\\码垛算法\\文件\\装箱算法\\zhuang\\PackingPortable\\python\\python.exe",
+    "python.defaultInterpreterPath": "${workspaceFolder}\\PackingPortable\\python\\python.exe",
     "python.analysis.extraPaths": [
-        "E:\\范卓燃\\码垛算法\\文件\\装箱算法\\zhuang\\packing-system\\packing",
-        "E:\\范卓燃\\码垛算法\\文件\\装箱算法\\zhuang\\packing-system\\ui"
+        "${workspaceFolder}\\packing-system\\packing",
+        "${workspaceFolder}\\packing-system\\ui"
     ],
     "python-envs.pythonProjects": []
 }

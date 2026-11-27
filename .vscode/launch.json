@@ -5,13 +5,13 @@
             "name": "zhuang：启动装箱工作台",
             "type": "debugpy",
             "request": "launch",
-            "python": "E:\\范卓燃\\码垛算法\\文件\\装箱算法\\zhuang\\PackingPortable\\python\\python.exe",
-            "program": "E:\\范卓燃\\码垛算法\\文件\\装箱算法\\zhuang\\packing-system\\ui\\realtime_dashboard_v3_clean.py",
+            "python": "${workspaceFolder}\\PackingPortable\\python\\python.exe",
+            "program": "${workspaceFolder}\\packing-system\\ui\\realtime_dashboard_v3_clean.py",
             "args": [
                 "--project",
-                "E:\\范卓燃\\码垛算法\\文件\\装箱算法\\zhuang\\packing-system"
+                "${workspaceFolder}\\packing-system"
             ],
-            "cwd": "E:\\范卓燃\\码垛算法\\文件\\装箱算法\\zhuang\\packing-system",
+            "cwd": "${workspaceFolder}\\packing-system",
             "console": "integratedTerminal",
             "justMyCode": true,
             "env": {

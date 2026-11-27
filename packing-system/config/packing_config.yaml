@@ -38,7 +38,7 @@ constraints:
   cpsat_target_subset_time_limit_seconds: 3.0
   cpsat_target_subset_max_attempts: 6
   max_box_gap_mm: 6.0
-  support_ratio_threshold: 0.9
+  support_ratio_threshold: 0.9  # 摆放支撑率目标，低于目标时在最终结果中提示
   center_of_mass_tolerance: 0.3333333333333333
   # 整盘限重（甲方 2026-09 需求）：整垛箱子重量和不得超过本值（千克）。
   # ≤ 0 = 关闭约束，完全恢复历史行为。单箱本身超限时该盘豁免并打印告警。

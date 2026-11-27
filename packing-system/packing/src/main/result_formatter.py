@@ -397,7 +397,7 @@ class ResultFormatter:
         )
         ResultFormatter.validate_output_quality(raw_boxes, pallets)
         ResultFormatter.validate_final_constraints(
-            pallets, constraint_config=constraint_config
+            pallets, constraint_config=constraint_config, report_support_warnings=True
         )
 
         # 装箱几何完成后再生成机器人执行顺序：只增补顺序/依赖/吸盘字段，
@@ -421,13 +421,16 @@ class ResultFormatter:
 
     @staticmethod
     def validate_final_constraints(
-        pallets: List[Dict], constraint_config=None
+        pallets: List[Dict], constraint_config=None, *, report_support_warnings: bool = False
     ) -> None:
-        """最终全量门禁：拒绝任何违反几何、稳定或机械约束的托盘。"""
+        """校验最终约束，导出时将支撑率低于目标的箱子记为警告。"""
         from src.geometry.constraint_validator import validate_pallet_constraints
 
         invalid = []
+        support_warning_count = 0
         for pallet in pallets:
+            if report_support_warnings:
+                pallet.pop('support_warnings', None)
             items = pallet.get('packed_items', []) or []
             if not items:
                 continue
@@ -444,10 +447,25 @@ class ResultFormatter:
                 constraint_config=constraint_config,
                 target_mpm=pallet.get('mpm_target'),
             )
-            if not gate['is_valid']:
+            violations = gate['violations']
+            if report_support_warnings:
+                target = getattr(constraint_config, 'support_ratio_threshold', 0.8)
+                support_warnings = [
+                    {
+                        'box_id': violation['box_id'],
+                        'support_ratio': violation['support_ratio'],
+                        'target_support_ratio': target,
+                    }
+                    for violation in violations if violation['type'] == 'support'
+                ]
+                if support_warnings:
+                    pallet['support_warnings'] = support_warnings
+                    support_warning_count += len(support_warnings)
+                violations = [v for v in violations if v['type'] != 'support']
+            if violations:
                 invalid.append({
                     'pallet_id': pallet.get('pallet_id'),
-                    'violations': gate['violations'],
+                    'violations': violations,
                 })
 
         if invalid:
@@ -459,6 +477,9 @@ class ResultFormatter:
                 for entry in invalid[:5]
             ]
             raise ValueError(f"最终整盘约束门禁失败：{preview}")
+
+        if support_warning_count:
+            print(f"  - 支撑率提醒：{support_warning_count} 个箱子低于目标，详见结果中的 support_warnings。")
 
     @staticmethod
     def validate_output_quality(raw_boxes: List[Dict], pallets: List[Dict]) -> None:
